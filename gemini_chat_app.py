@@ -13,7 +13,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# ✅ Initialize Gemini model with caching
+# ✅ Load Gemini model using flash (faster)
 @st.cache_resource
 def load_model():
     genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -21,15 +21,15 @@ def load_model():
 
 model = load_model()
 
-# ✅ Safe Gemini response generator
+# ✅ Single-shot response generator
 def get_gemini_response(question):
     try:
         response = model.generate_content(question)
-        yield response.text
+        return response.text
     except Exception as e:
-        yield "⚠️ An error occurred: " + str(e)
+        return f"⚠️ Error from Gemini: {str(e)}"
 
-# ✅ Suggested health questions
+# ✅ Sample suggestions
 health_suggestions = [
     "How to cure fever?",
     "What are the symptoms of dengue?",
@@ -44,13 +44,13 @@ health_suggestions = [
     "How to cure asthma?"
 ]
 
-# ✅ Session state
+# ✅ Session state setup
 if "user_query" not in st.session_state:
     st.session_state.user_query = ""
 if "submitted" not in st.session_state:
     st.session_state.submitted = False
 
-# ✅ UI
+# ✅ App UI
 st.header("🩺 QueueCare Health Assistant")
 
 user_query = st.text_input(
@@ -72,15 +72,14 @@ if user_query and not st.session_state.submitted:
 
 submit = st.button("Ask")
 
-# ✅ Submission handling
+# ✅ Submission logic
 if (submit or st.session_state.submitted) and user_query:
     if len(user_query.split()) > 100:
-        st.warning("Please limit your question to 100 words.")
+        st.warning("Please keep your question under 100 words.")
     else:
         with st.spinner("Analyzing your health question..."):
-            response_placeholder = st.empty()
-            for partial_text in get_gemini_response(user_query):
-                response_placeholder.markdown(partial_text)
+            response = get_gemini_response(user_query)
+            st.markdown(response)
 
     st.session_state.user_query = ""
     st.session_state.submitted = False
